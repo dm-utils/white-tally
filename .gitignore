@@ -1,0 +1,20 @@
+# Godot
+.godot/
+*.translation
+export_credentials.cfg
+android/build/
+
+# Build output
+build/
+
+# Local secrets and env files (never commit)
+.env
+.env.*
+*.keystore
+*.jks
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+__pycache__/
