@@ -12,9 +12,12 @@ information.
 
 ## Decision
 
-- After every move, undo and restart the game checks whether the board is non-empty and has no legal move. If so,
+- Whenever the screen refreshes, the game checks whether the board is non-empty and has no legal move. If so,
   the message line says "No move left. Undo or restart." Nothing else changes.
 - Positions that still have moves but cannot be cleared are not detected or reported in phase 1.
+- The message line belongs to the White Kit day screen, which has no hook for a message while playing. White Tally
+  asks the kit for one (design 7.1, R1); until then `ui/main.gd` overrides `_refresh()`, calls the base and sets
+  the message in a dead end.
 
 ## Alternatives considered
 
@@ -23,6 +26,8 @@ information.
   a phone browser, the outcome depends on a budget (sometimes "unknown"), and it acts as an oracle that tells the
   player a move was a mistake. Rejected for phase 1; reconsidered in phase 2 with play-test data.
 - Precompute dead positions: the number of reachable positions is far too large. Rejected.
+- Show the notice inside the board view instead of the message line: works without any kit change, but splits
+  messages over two places. Rejected; kept as a last resort if the kit declines R1.
 
 ## Consequences
 
