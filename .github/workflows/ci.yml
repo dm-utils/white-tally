@@ -1,0 +1,56 @@
+# CI: tests on develop/main, superseded runs cancelled. Web export and the Pages play version
+# (play.whitetally.steefbeest.nl) follow with the UI scene (phase 1b).
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MIN_CHECKS: "177" # the number of checks of the game's own tests, so skipped tests fail the build
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Kit pin (the submodule must be exactly the release tag)
+        run: |
+          v=$(cat addons/white_kit/VERSION)
+          git -C addons/white_kit fetch --depth=1 origin "refs/tags/v$v:refs/tags/v$v"
+          tagged=$(git -C addons/white_kit rev-parse "v$v^{commit}")
+          head=$(git -C addons/white_kit rev-parse HEAD)
+          if [ "$tagged" != "$head" ]; then echo "::error::addons/white_kit is not at tag v$v"; exit 1; fi
+          echo "White Kit v$v" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: ./addons/white_kit/ci/setup-godot
+
+      - name: Import project
+        run: timeout 600 godot --headless --path . --import
+
+      - name: Kit tests
+        run: timeout 300 godot --headless --path . res://addons/white_kit/tests/run_kit_tests.tscn -- --min-checks=250
+
+      - name: Game tests
+        run: timeout 300 godot --headless --path . res://tests/run_tests.tscn -- --min-checks=${{ env.MIN_CHECKS }}
+
+      - name: Puzzles left (warn when fewer than 14 days are built ahead)
+        if: hashFiles('data/daily.json') != ''
+        run: |
+          left=$(python3 -I -c "import json,datetime; d=json.load(open('data/daily.json')); t=datetime.date.today().isoformat(); print(sum(1 for k in d if k>=t))")
+          echo "Daily puzzles built from today on: $left" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$left" -lt 14 ]; then echo "::warning::only $left days of daily puzzles left; run tools/build_puzzles.gd"; fi
