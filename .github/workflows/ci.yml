@@ -1,5 +1,5 @@
 # CI: tests and the web build on develop/main, superseded runs cancelled. The release web build of develop is the
-# play version on GitHub Pages (play.whitetally.steefbeest.nl). Debug screenshots are a build artifact.
+# play version on GitHub Pages (play.white-tally.steefbeest.nl). Debug screenshots are a build artifact.
 name: CI
 
 on:

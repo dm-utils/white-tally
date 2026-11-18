@@ -124,7 +124,7 @@ godot --headless --path . -s res://tools/build_puzzles.gd -- --merge=build/daily
 ## Git and CI
 
 - `develop` is the working branch; every push to `develop` runs CI and publishes the play version at
-  https://play.whitetally.steefbeest.nl. `main` is protected and is updated through pull requests only; CI runs
+  https://play.white-tally.steefbeest.nl. `main` is protected and is updated through pull requests only; CI runs
   on those pull requests.
 - `.github/workflows/ci.yml` comes from the kit template (`addons/white_kit/templates/ci.yml`).
 - Branch names: `feature/<description>`, `fix/<description>`, `chore/<description>`.

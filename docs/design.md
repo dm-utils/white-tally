@@ -38,7 +38,7 @@ In scope:
 - Readability of tiles and groups (10.1).
 - Moves and par shown simply (3.1); no strict scoring.
 - Dutch and English.
-- Web version on GitHub Pages at https://play.whitetally.steefbeest.nl.
+- Web version on GitHub Pages at https://play.white-tally.steefbeest.nl.
 - The rules engine, generator and solver needed to fill the pool (section 5), with a light trial (5.7).
 
 Out of scope for phase 1 (designed below where marked **[later]**): binding puzzles to dates, the first day and
@@ -872,7 +872,7 @@ scenarios shows a running clock.
   `data/daily.json` exists, so it is inactive in phase 1.
 - Export preset `exclude_filter="tests/*,tools/*,addons/white_kit/tests/*,addons/white_kit/tools/*"`.
 - On `develop` (not on pull requests) the Web build is published to GitHub Pages at
-  https://play.whitetally.steefbeest.nl (custom domain: Pages setting plus a DNS record in the existing zone, as
+  https://play.white-tally.steefbeest.nl (custom domain: Pages setting plus a DNS record in the existing zone, as
   for White Shift; there is no CNAME file because the Pages source is the workflow).
 - No Android or Windows builds in phase 1. Cost: none (public repository). No `LICENSE` file (all rights
   reserved).
@@ -950,7 +950,7 @@ UI and deployment (manual or screenshot)
 - The counter reads `count_final`, par is shown, and the solved message shows count, par and clock.
 - The dead-end message appears in Example 6 and disappears after undo.
 - Dutch and English both complete; the language choice survives a reload.
-- CI on `develop` is green (kit pin check, kit tests, game tests) and https://play.whitetally.steefbeest.nl loads
+- CI on `develop` is green (kit pin check, kit tests, game tests) and https://play.white-tally.steefbeest.nl loads
   and plays in a phone browser and on a PC.
 
 ### 13.2 [later] Phase 2
