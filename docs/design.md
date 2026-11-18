@@ -542,8 +542,40 @@ Before puzzles are bound to dates (phase 2), the trial is repeated with 200 seed
 
 ### 5.9 Trial results
 
-To be filled in by the developer after the phase 1 trial: the final level table and the M1-M2 figures with checks
-P1-P3. This is the only section of this document the developer edits.
+Trial of 2026-11-18, kit v0.1.0 rules, `tools/measure.gd`, 50 seeds per level. Starting values of section 4 are
+unchanged except the hard solver budget, lowered within the range to 30 000 expansions (P3). Easy and medium keep
+100 000 and 300 000.
+
+Implementation notes that affect results (not design changes): before the solver a beam search (width 30)
+gives a quick upper bound; a candidate whose beam line is shorter than the band is rejected without searching (par
+is then known to be too low). The solver then starts from that shorter line. Reverse moves are drawn by sampling
+the candidate list without replacement until one is valid (same distribution as a uniform pick among the valid
+ones). The fast `step()` floods whole components instead of stopping at 5 cells, so every flood marks its group.
+
+M1 (6x7, 20-28 tiles, GDScript, one desktop core): `step()` about 34 000 calls per second; the solver about
+1 800 expansions per second (about 33 moves per position, so each expansion costs about 33 steps).
+
+M2:
+
+| Level | Non-fallback | Exact | Tiles (median) | U (median) | Par median (spread) | Tried median / max | Build time median / max |
+|---|---|---|---|---|---|---|---|
+| Easy 5x6 | 50 / 50 | 50 / 50 | 11 | 4 | 3 (3: 41, 4: 9) | 6 / 59 | 0.0 s / 0.4 s |
+| Medium 6x6 | 50 / 50 | 50 / 50 | 17 | 7 | 5 (5: 45, 6: 5) | 10 / 69 | 1.8 s / 20.7 s |
+| Hard 6x7 | 46 / 50 | 0 / 50 | 24 | 11 | 8 (7: 4, 8: 31, 9: 11, 10: 4) | 186 / 900 | 115 s / 605 s |
+
+Hard times were measured with seven processes running at once on 8 cores, so they overstate a single run (solo
+runs of the first seeds took 25-130 s).
+
+- P1: met for every level (50, 50 and 46 of 50 at least 40).
+- P2: met, median par 3 < 5 < 8. Medium and hard sit at the lower end of their band.
+- P3: met. The pool was built in five parallel processes in about 50 minutes; the summed single-core estimate is
+  well under 2 hours (hard about 1.1 to 1.9 hours, medium and easy a few minutes).
+
+Findings for later phases: the generator's own line is far from optimal (par is about half of `U`), so reaching the
+hard band needs the beam prefilter and many candidates (median 186 of 900). Hard par is bounded for all 50 seeds
+(`exact` 0 of 50 at 30 000 expansions), so gate B of 5.8 is not reachable with this solver speed; hard ships
+bounded par unless the solver gets faster. One pool set (set 11, hard) is a fallback with par 7 and `"fallback":
+true`.
 
 ## 6. Precomputed puzzles
 
