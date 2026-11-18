@@ -55,22 +55,14 @@ jobs:
           echo "Daily puzzles built from today on: $left" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$left" -lt 14 ]; then echo "::warning::only $left days of daily puzzles left; run tools/build_puzzles.gd"; fi
 
-      - name: Debug screenshots (phone and desktop size)
+      - name: Debug screenshots (tools/shots.txt)
+        if: hashFiles('tools/shots.txt') != ''
         run: |
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri >/dev/null
-          mkdir -p build/shots
-          shot() { name=$1; res=$2; shift 2
-            timeout 120 xvfb-run -a -s "-screen 0 1920x1440x24" godot --path . --rendering-driver opengl3 --resolution "$res" -- --shot="build/shots/$name.png" --practice "$@"; }
-          shot easy 720x1280 --level=0
-          shot medium 720x1280 --level=1 --lang=en
-          shot hard 720x1280 --level=2
-          shot selected 720x1280 --level=1 --sel=0
-          shot solved 720x1280 --level=0 --best
-          shot phone-safe-area 720x1280 --level=1 --safe=40,80,40,60
-          shot desktop 1280x720 --level=1
+          addons/white_kit/tools/shots.sh run . tools/shots.txt build/shots
 
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && hashFiles('tools/shots.txt') != ''
         with:
           name: shots
           path: build/shots
