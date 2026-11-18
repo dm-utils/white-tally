@@ -4,6 +4,7 @@ extends RefCounted
 ## number of reverse steps bounds par. Draws only from WhiteRng seeded with the seed.
 
 const RETRIES := 50
+const BEAM_WIDTH := 30
 
 # gap -1: no greedy filter; i/q ranges inclusive; band par range inclusive
 const LEVELS: Array[Dictionary] = [
@@ -12,7 +13,7 @@ const LEVELS: Array[Dictionary] = [
 	{"w": 6, "h": 6, "i": [5, 6], "q": [1, 2], "chain": 20, "values": 3, "overfull": 1, "gap": 1,
 		"band": [5, 8], "candidates": 600, "budget": 300000},
 	{"w": 6, "h": 7, "i": [7, 9], "q": [2, 3], "chain": 30, "values": 3, "overfull": 1, "gap": 2,
-		"band": [8, 12], "candidates": 900, "budget": 1000000},
+		"band": [8, 12], "candidates": 900, "budget": 30000},
 ]
 
 
@@ -42,10 +43,16 @@ static func generate_with(seed_value: int, cfg: Dictionary) -> Dictionary:
 		var exact := false
 		var sol_path := path
 		if upper >= band[0]:
-			var r := TallySolver.solve(board, start, path, cfg.budget)
-			par = r.par
-			exact = r.exact
-			sol_path = r.path
+			# cheap beam first: a line below the band proves par is too low, no need to search
+			var bm := TallySolver.beam(board, start, BEAM_WIDTH, upper - 1)
+			if not bm.is_empty():
+				sol_path = bm
+				par = bm.size()
+			if par >= band[0]:
+				var r := TallySolver.solve(board, start, sol_path, cfg.budget)
+				par = r.par
+				exact = r.exact
+				sol_path = r.path
 		var res := {"start": start, "par": par, "exact": exact, "upper": upper, "path": sol_path}
 		var dist := maxi(0, maxi(band[0] - par, par - band[1]))
 		var key := [dist, 0 if exact else 1, board.count_tiles(start)]

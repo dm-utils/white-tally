@@ -10,12 +10,15 @@ func _init() -> void:
 	var seeds := 50
 	var only := -1
 	var m1 := true
+	var first := 0
 	var budget := -1
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--seeds="):
 			seeds = int(a.get_slice("=", 1))
 		elif a.begins_with("--level="):
 			only = int(a.get_slice("=", 1))
+		elif a.begins_with("--from="):
+			first = int(a.get_slice("=", 1))
 		elif a.begins_with("--budget="):
 			budget = int(a.get_slice("=", 1))
 		elif a == "--skip-m1":
@@ -28,7 +31,7 @@ func _init() -> void:
 	for level in 3:
 		if only >= 0 and level != only:
 			continue
-		var r := _m2(level, seeds, budget)
+		var r := _m2(level, seeds, budget, first)
 		medians.append(r.par_median)
 		total_s += r.total_s
 		ok = ok and r.ok
@@ -69,7 +72,7 @@ func _m1() -> void:
 	print("M1 solver: %.0f expansions per second (%d expansions)" % [sol.expansions / dt, sol.expansions])
 
 
-func _m2(level: int, seeds: int, budget: int) -> Dictionary:
+func _m2(level: int, seeds: int, budget: int, first: int) -> Dictionary:
 	var cfg: Dictionary = TallyGenerator.LEVELS[level].duplicate()
 	if budget >= 0:
 		cfg.budget = budget
@@ -81,7 +84,7 @@ func _m2(level: int, seeds: int, budget: int) -> Dictionary:
 	var fallback := 0
 	var exact := 0
 	var total := 0.0
-	for n in seeds:
+	for n in range(first, first + seeds):
 		var t0 := Time.get_ticks_usec()
 		var r := TallyGenerator.generate_with(WhiteSeed.fnv1a64("white-tally-trial|%d|%d" % [n, level]), cfg)
 		var dt := (Time.get_ticks_usec() - t0) / 1e6
@@ -93,8 +96,8 @@ func _m2(level: int, seeds: int, budget: int) -> Dictionary:
 		tiles.append(b.count_tiles(b.start))
 		tried.append(r.tried)
 		fallback += 1 if r.fallback else 0
-		print("  %s seed %d: par %d upper %d exact %s tried %d fallback %s %.1f s" % [
-			NAMES[level], n, r.par, r.upper, r.exact, r.tried, r.fallback, dt])
+		print("  %s seed %d: par %d upper %d exact %s tried %d fallback %s tiles %d %.1f s" % [
+			NAMES[level], n, r.par, r.upper, r.exact, r.tried, r.fallback, b.count_tiles(b.start), dt])
 		exact += 1 if r.exact else 0
 	var nonfb := seeds - fallback
 	var need := ceili(seeds * 0.8)
