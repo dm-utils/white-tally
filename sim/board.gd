@@ -242,6 +242,8 @@ func resolve(state: PackedByteArray) -> PackedByteArray:
 
 # ymin[x]: lowest row that changed in column x (h = untouched); cells below are a settled stack
 func _waves(s: PackedByteArray, ymin: PackedInt32Array) -> void:
+	var w := self.w
+	var h := self.h
 	while true:
 		# settle touched columns
 		for x in w:
@@ -260,15 +262,18 @@ func _waves(s: PackedByteArray, ymin: PackedInt32Array) -> void:
 		_stamp += 1
 		var gone := PackedInt32Array()
 		for x in w:
-			var lo := h
-			for k in range(maxi(0, x - 1), mini(w, x + 2)):
-				lo = mini(lo, ymin[k])
+			var lo := ymin[x]
+			if x > 0 and ymin[x - 1] < lo:
+				lo = ymin[x - 1]
+			if x + 1 < w and ymin[x + 1] < lo:
+				lo = ymin[x + 1]
 			if lo >= h:
 				continue
-			for y in range(maxi(0, lo - 1), h):
-				var i := y * w + x
-				if s[i] != 0 and _seen[i] != _stamp:
+			var i := maxi(0, lo - 1) * w + x
+			while i < w * h and s[i] != 0:
+				if _seen[i] != _stamp:
 					_flood(s, i, gone)
+				i += w
 		if gone.is_empty():
 			return
 		ymin.fill(h)
