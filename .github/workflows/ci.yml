@@ -43,7 +43,7 @@ jobs:
         run: timeout 600 godot --headless --path . --import
 
       - name: Kit tests
-        run: timeout 300 godot --headless --path . res://addons/white_kit/tests/run_kit_tests.tscn -- --min-checks=522
+        run: timeout 300 godot --headless --path . res://addons/white_kit/tests/run_kit_tests.tscn -- --min-checks=764
 
       - name: Game tests
         run: timeout 300 godot --headless --path . res://tests/run_tests.tscn -- --min-checks=${{ env.MIN_CHECKS }}
