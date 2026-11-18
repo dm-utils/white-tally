@@ -8,6 +8,7 @@ config_version=5
 config/name="White Tally"
 config/version="0.1.0"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://ui/main.tscn"
 config/icon="res://icon.svg"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0.106, 0.122, 0.149, 1)
