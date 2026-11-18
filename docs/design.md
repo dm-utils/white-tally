@@ -1,6 +1,6 @@
 # White Tally - design
 
-Status: phase 1 (look and feel) designed, not built yet. Later phases are designed in outline and marked
+Status: phase 1 (look and feel) built: rules, generator, solver and pool (1a), screen, board view and play version (1b). Later phases are designed in outline and marked
 **[later]**; they are not built in phase 1.
 This document describes the game as it must be built. Decisions with their trade-offs are in `docs/adr/`;
 terms are defined in `docs/glossary.md`; code and test rules are in `docs/conventions.md`.
@@ -647,7 +647,7 @@ leaderboard phase the server provides the daily seed or puzzle.
 
 ## 7. White Kit usage
 
-White Tally pins a tagged kit release (first `v0.1.0`) as a submodule at `addons/white_kit`. Names below are the
+White Tally pins a tagged kit release (`v0.2.0`) as a submodule at `addons/white_kit`. Names below are the
 kit's (kit design sections in brackets). Items marked **[later]** are not used in phase 1.
 
 | # | Need | Kit part | How White Tally uses it |
@@ -664,14 +664,14 @@ kit's (kit design sections in brackets). Items marked **[later]** are not used i
 
 ### 7.1 Kit changes requested
 
-None blocks the build; each has an interim solution that works with kit `v0.1.0`. When the kit adds them (a MINOR
-version), White Tally moves to the hooks and drops the interim code.
+R1-R3 were requested for phase 1 and arrived in kit `v0.2.0` (hooks `_play_message` and `_practice_only`, text key
+`count_final`); the interim overrides of `_refresh()` and `_open_day()` were never built. No open requests.
 
-| # | Request | Why | Interim with kit v0.1.0 |
-|---|---|---|---|
-| R1 | A hook for the message line while playing, for example `_play_message(a: WhiteAttempt) -> String`, used when the attempt is not solved and `moves_made > 0`; default `""`. | The dead-end notice (2.8, ADR 0006). | `ui/main.gd` overrides `_refresh()`: call `super()`, then, when a puzzle is shown, not solved and `board.is_dead_end(a.state)`, set `message.text = WhiteText.t("dead_end")`. |
-| R2 | A count label per mode, for example an optional text key `count_final` used in `FINAL_ONLY` (falling back to `count`). | Practice counts only the current line ("Moves in solution"). | Same `_refresh()` override: in practice set `counter.text = WhiteText.t("count_final") % a.count()`. |
-| R3 | A pool-only mode: a hook such as `_start_in_practice() -> bool` (open practice instead of the day, hide the mode button). | Phase 1 has no daily puzzles; the day view would only show "no puzzle". | `ui/main.gd` overrides `_open_day()` to call `_open_practice()`, and the `_refresh()` override hides `mode_btn`. |
+| # | Request | Kit `v0.2.0` |
+|---|---|---|
+| R1 | Message line hook while playing (dead-end notice, 2.8, ADR 0006). | `_play_message(a)`, used by `ui/main.gd`. |
+| R2 | Count label per mode. | Text key `count_final` in `FINAL_ONLY`. |
+| R3 | Pool-only mode. | `_practice_only()` returns true. |
 
 ## 8. Attempt and record
 
@@ -754,7 +754,7 @@ tuned after the look-and-feel test without touching logic.
 
 ### 10.3 Screen (`ui/main.gd extends WhiteDayScreen`)
 
-Phase 1 uses the kit screen in practice mode only: title and language button (mode button hidden, R3), subtitle
+Phase 1 uses the kit screen in practice mode only: title and language button (mode button hidden, `_practice_only`), subtitle
 with the set number, three level tabs (solved levels show their count), counter, par and clock, the board, message
 line, buttons Undo, Restart, Best route (when solved), Next. The session starts at a random set (kit); the tabs
 choose a level freely; Next goes to the next level and after hard to the next set. Share is not shown (kit: not in
@@ -782,7 +782,13 @@ Hooks implemented by White Tally:
 | `_key_move(event)` | keyboard handling of 10.4; returns a canonical code or null |
 | `_on_debug_extra()` | `--best`: start Best route |
 
-Plus the interim overrides of `_open_day()` and `_refresh()` (7.1).
+Also implemented: `_practice_only()` (true) and `_play_message(a)` (dead-end notice 2.8, empty while the view is
+animating; the view's `finished` signal refreshes the screen, so the notice appears when the tiles have stopped).
+`_key_move(event)` forwards to `TallyBoardView.key_move`.
+
+**Safe area.** `_make_view` schedules `TallySafeArea.apply` (`ui/safe_area.gd`) on the kit's margin container: the
+display safe area, as window-relative insets in viewport units, is added to the kit margins (notches, rounded
+corners; zero on a normal desktop window). Debug override `--safe=l,t,r,b` in viewport px.
 
 ### 10.4 Input
 
@@ -800,8 +806,13 @@ Plus the interim overrides of `_open_day()` and `_refresh()` (7.1).
 - Every gesture becomes a raw code `(x, y, d)`; the view converts it with `board.canonical(state, code)`. If the
   result is -1 the view shakes the tile and emits nothing; otherwise it emits `move_chosen(canonical code)`.
   `_key_move` does the same conversion and returns null for an ignored move (after triggering the shake).
+- Phase 1 details of the keyboard: the first arrow key only shows the cursor (at `A1`); an ignored move with a
+  grab shakes the tile and keeps the grab. A press that ends within 24 px on a tile or empty cell is a tap.
+  While Best route plays, the view ignores input.
 - Debug screenshot mode is the kit's: `-- --shot=<png> --practice [--level=N] [--keys=RB1zLD1] [--lang=en]
-  [--best]` (`--keys` takes a record).
+  [--best]` (`--keys` takes a record), plus `--sel=<cell index>` (shows a selection) and `--safe=l,t,r,b`. Start
+  the game under `xvfb-run -s "-screen 0 1920x1440x24"` with `--rendering-driver opengl3`; a smaller virtual
+  screen would count as an inset through the safe area.
 
 ### 10.5 Messages
 
@@ -837,11 +848,13 @@ default texts.
 
 - `.github/workflows/ci.yml` copied from the kit template (kit 7.4): checkout with submodules, kit pin check,
   `setup-godot` (4.7.2), import, kit tests, game tests with `--min-checks=<N>`, Web export (release,
-  single-threaded) as artifact, Pages deploy on `develop`. The puzzles-left step only runs when
+  single-threaded) as artifact, debug screenshots (artifact `shots`: three levels, selection, solved, phone safe
+  area, desktop size), Pages deploy on `develop`. The puzzles-left step only runs when
   `data/daily.json` exists, so it is inactive in phase 1.
 - Export preset `exclude_filter="tests/*,tools/*,addons/white_kit/tests/*,addons/white_kit/tools/*"`.
 - On `develop` (not on pull requests) the Web build is published to GitHub Pages at
-  https://play.whitetally.steefbeest.nl (custom domain via a DNS record in the existing zone).
+  https://play.whitetally.steefbeest.nl (custom domain: Pages setting plus a DNS record in the existing zone, as
+  for White Shift; there is no CNAME file because the Pages source is the workflow).
 - No Android or Windows builds in phase 1. Cost: none (public repository). No `LICENSE` file (all rights
   reserved).
 
