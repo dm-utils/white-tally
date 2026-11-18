@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  MIN_CHECKS: "237" # the number of checks of the game's own tests, so skipped tests fail the build
+  MIN_CHECKS: "241" # the number of checks of the game's own tests, so skipped tests fail the build
 
 jobs:
   build:

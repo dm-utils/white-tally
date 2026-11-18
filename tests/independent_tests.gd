@@ -330,7 +330,7 @@ func _motion(p: Vector2) -> InputEventMouseMotion:
 
 func _input_boundaries() -> void:
 	var v := _view(["32.", "23."])
-	var lay := TallyBoardView.layout(v.size, 3, 2)
+	var lay := WhiteTileView.layout(v.size, 3, 2, 0.3)
 	var cell: float = lay.cell
 	var o: Vector2 = lay.origin
 	var a1 := o + Vector2(cell * 0.5, cell * 1.5)

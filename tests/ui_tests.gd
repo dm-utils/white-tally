@@ -2,6 +2,8 @@ extends RefCounted
 ## UI logic that needs no screen: layout, gestures, keys, animation phases, the view's state handling, texts and the
 ## main screen in practice mode (design 10, 13.1 UI).
 
+const VANISH_TOTAL := 0.18 + 0.06 ## kit vanish_time + vanish_pause
+
 var _check: Callable
 var _node: Node
 var _moves: Array = []
@@ -14,6 +16,7 @@ func run(check: Callable, node: Node) -> void:
 	_layout()
 	_gestures()
 	_phases()
+	_view_steps()
 	_view_moves()
 	_view_ignored()
 	_tap_tap()
@@ -51,7 +54,7 @@ func _drain(v: TallyBoardView) -> int:
 
 
 func _layout() -> void:
-	var lay := TallyBoardView.layout(Vector2(660, 800), 6, 7)
+	var lay := WhiteTileView.layout(Vector2(660, 800), 6, 7, 0.3)
 	var cell: float = lay.cell
 	var o: Vector2 = lay.origin
 	_check.call(cell == floorf(cell) and cell * 6 <= 660 and cell * 7 <= 800, "layout: whole-pixel cells that fit the area")
@@ -63,7 +66,7 @@ func _layout() -> void:
 	_check.call(top_right == 6 * 7 - 1, "cell_at: top-right on screen is the last cell (y counts upwards)")
 	_check.call(TallyBoardView.cell_at(o - Vector2(1, 1), lay, 6, 7) == -1, "cell_at: outside the board is -1")
 	_check.call(TallyBoardView.cell_at(o + Vector2(cell * 6.0 + 1, 5), lay, 6, 7) == -1, "cell_at: right of the board is -1")
-	var tall := TallyBoardView.layout(Vector2(300, 1000), 5, 6)
+	var tall := WhiteTileView.layout(Vector2(300, 1000), 5, 6, 0.3)
 	_check.call(tall.cell * 5 <= 300, "layout: the narrow side decides")
 
 
@@ -102,8 +105,8 @@ func _phases() -> void:
 	for i in 9:
 		ids[i] = i if b.start[i] != 0 else -1
 	var tr := b.step_traced(b.start, b.decode_move("RA2"))
-	var built := TallyBoardView.build_phases(3, ids, tr.steps)
-	_check.call(_kinds(built.phases) == ["swap", "vanish", "fall", "vanish", "fall"],
+	var built := WhiteTileView.build_phases(3, ids, TallyBoardView.to_steps(tr.steps), VANISH_TOTAL)
+	_check.call(_kinds(built.phases) == ["move", "vanish", "move", "vanish", "move"],
 			"chain (example 3): swap, then each wave as vanish and fall, one after another")
 	var ok := true
 	for i in 9:
@@ -114,14 +117,23 @@ func _phases() -> void:
 	var fall: Dictionary = built.phases[2]
 	_check.call(is_equal_approx(fall.dur, 2.0 / TallyBoardView.FALL_SPEED), "fall of two cells lasts two cells at constant speed")
 	_check.call(built.phases[0].dur == TallyBoardView.SWAP_TIME, "swap lasts 120 ms")
-	_check.call(is_equal_approx(built.phases[1].dur, TallyBoardView.VANISH_TIME + TallyBoardView.VANISH_PAUSE),
+	_check.call(is_equal_approx(built.phases[1].dur, VANISH_TOTAL),
 			"vanish is a fade plus a short pause")
 	var bs := _mk(["2..", "3.."])
 	var ids2 := PackedInt32Array([0, -1, -1, 3, -1, -1])
 	ids2[0] = 0
-	var built2 := TallyBoardView.build_phases(3, ids2, bs.step_traced(bs.start, bs.decode_move("RA2")).steps)
-	_check.call(_kinds(built2.phases) == ["slide", "fall"], "slide into an empty cell: slide phase, then the fall")
+	var built2 := WhiteTileView.build_phases(3, ids2, TallyBoardView.to_steps(bs.step_traced(bs.start, bs.decode_move("RA2")).steps), VANISH_TOTAL)
+	_check.call(_kinds(built2.phases) == ["move", "move"], "slide into an empty cell: slide phase, then the fall")
 	_check.call(built2.ids[1] == 3 and built2.ids[3] == -1, "the slid tile keeps its id and lands one row lower")
+
+
+func _view_steps() -> void:
+	var b := _mk(["2..", "3.."])
+	var steps := TallyBoardView.to_steps(b.step_traced(b.start, b.decode_move("RA2")).steps)
+	_check.call(steps.size() == 2 and steps[0].kind == "move" and steps[0].time == TallyBoardView.SLIDE_TIME and steps[0].ease,
+			"to_steps: a slide is an eased move of 100 ms")
+	_check.call(steps[1].kind == "move" and steps[1].speed == TallyBoardView.FALL_SPEED and not steps[1].has("ease"),
+			"to_steps: a fall moves at constant speed")
 
 
 func _view_moves() -> void:
@@ -165,17 +177,17 @@ func _view_moves() -> void:
 func _view_ignored() -> void:
 	var r := _view(["22", "32"])
 	var v: TallyBoardView = r[0]
-	_check.call(v._try_move(2 * 4 + TallyBoard.Dir.R) == -1, "swap of equal values is ignored")
+	_check.call(v._cell_move(2, TallyBoard.Dir.R) == -1, "swap of equal values is ignored")
 	_check.call(v._shake_id >= 0, "an ignored move shakes the source tile")
-	_check.call(v._try_move(1 * 4 + TallyBoard.Dir.R) == -1, "move off the board is ignored")
-	_check.call(v._try_move(0 * 4 + TallyBoard.Dir.U) == 0 * 4 + TallyBoard.Dir.U, "swap upwards from the lower cell stays as it is")
-	_check.call(v._try_move(2 * 4 + TallyBoard.Dir.D) == 0 * 4 + TallyBoard.Dir.U, "swap downwards becomes U from the lower cell")
+	_check.call(v._cell_move(1, TallyBoard.Dir.R) == -1, "move off the board is ignored")
+	_check.call(v._cell_move(0, TallyBoard.Dir.U) == 0 * 4 + TallyBoard.Dir.U, "swap upwards from the lower cell stays as it is")
+	_check.call(v._cell_move(2, TallyBoard.Dir.D) == 0 * 4 + TallyBoard.Dir.U, "swap downwards becomes U from the lower cell")
 	var r2 := _view(["2.", "32"])
 	var v2: TallyBoardView = r2[0]
-	_check.call(v2._try_move(3 * 4 + TallyBoard.Dir.L) == -1 and v2._shake_id == -1, "move from an empty cell is ignored without a shake")
-	_check.call(v2._try_move(1 * 4 + TallyBoard.Dir.U) == -1, "lifting a tile into an empty cell is ignored")
-	_check.call(v2._try_move(2 * 4 + TallyBoard.Dir.R) == 2 * 4 + TallyBoard.Dir.R, "slide into an empty cell is a move")
-	_check.call(_moves.is_empty(), "_try_move itself emits nothing")
+	_check.call(v2._cell_move(3, TallyBoard.Dir.L) == -1 and v2._shake_id == -1, "move from an empty cell is ignored without a shake")
+	_check.call(v2._cell_move(1, TallyBoard.Dir.U) == -1, "lifting a tile into an empty cell is ignored")
+	_check.call(v2._cell_move(2, TallyBoard.Dir.R) == 2 * 4 + TallyBoard.Dir.R, "slide into an empty cell is a move")
+	_check.call(_moves.is_empty(), "_cell_move itself emits nothing")
 
 
 func _tap_tap() -> void:
@@ -275,7 +287,7 @@ func _motion(p: Vector2) -> InputEventMouseMotion:
 func _pointer() -> void:
 	var r := _view(["3..", "42.", "233"])
 	var v: TallyBoardView = r[0]
-	var lay := TallyBoardView.layout(v.size, 3, 3)
+	var lay := WhiteTileView.layout(v.size, 3, 3, 0.3)
 	var cell: float = lay.cell
 	var o: Vector2 = lay.origin
 	var a2 := o + Vector2(cell * 0.5, cell * 1.5) # A2 (row 2 from the bottom)
@@ -366,4 +378,7 @@ func _screen() -> void:
 	_check.call(m._play_message(da) == "", "no dead-end notice before a move")
 	da.moves_made = 1
 	_check.call(m._play_message(da) == WhiteText.t("dead_end"), "dead-end notice on a board without a move")
+	var wide: Dictionary = m._insets_for(Vector2(2276, 1280))
+	_check.call(wide.left == 778 and wide.right == 778 and wide.top == 24, "wide screen: the column is at most 720 px, centred")
+	_check.call(m._insets_for(Vector2(720, 1280)).left == 24, "phone width: normal margins")
 	m.queue_free()
