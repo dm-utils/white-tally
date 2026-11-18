@@ -647,7 +647,7 @@ leaderboard phase the server provides the daily seed or puzzle.
 
 ## 7. White Kit usage
 
-White Tally pins a tagged kit release (`v0.2.0`) as a submodule at `addons/white_kit`. Names below are the
+White Tally pins a tagged kit release (`v0.3.0`) as a submodule at `addons/white_kit`. Names below are the
 kit's (kit design sections in brackets). Items marked **[later]** are not used in phase 1.
 
 | # | Need | Kit part | How White Tally uses it |
@@ -659,7 +659,7 @@ kit's (kit design sections in brackets). Items marked **[later]** are not used i
 | K5 | Saved progress | `WhiteProgress` (5.8) | Phase 1: only the language (practice attempts are not saved). **[later]** daily records. |
 | K6 | Share line, clock | `WhiteFormat` (5.10) | Phase 1: clock in the solved message. **[later]** share line. |
 | K7 | Texts NL/EN | `WhiteText` (5.9) | `_texts()` returns the game table (10.6), overriding kit defaults. |
-| K8 | Screen | `WhiteDayScreen`, `WhiteTheme`, `WhiteUi` (5.11, 5.12) | `ui/main.gd` (`extends WhiteDayScreen`) implements the hooks in 10.3; the board view is `TallyBoardView`. |
+| K8 | Screen | `WhiteDayScreen`, `WhiteTheme`, `WhiteUi` (5.11, 5.12) | `ui/main.gd` (`extends WhiteDayScreen`) implements the hooks in 10.3; the board view is `TallyBoardView extends WhiteTileView` (10.8); `WhiteSafeArea` and the hooks `_use_safe_area()` and `_max_content_width()` (10.3). |
 | K9 | Tests, precompute, CI | `WhiteTestRunner` (5.13), `WhitePrecompute` (5.14), `templates/ci.yml` (7.4) | `tests/run_tests.gd extends WhiteTestRunner`; `tools/build_puzzles.gd extends WhitePrecompute`; CI copied from the template with `--min-checks`. |
 
 ### 7.1 Kit changes requested
@@ -672,6 +672,9 @@ R1-R3 were requested for phase 1 and arrived in kit `v0.2.0` (hooks `_play_messa
 | R1 | Message line hook while playing (dead-end notice, 2.8, ADR 0006). | `_play_message(a)`, used by `ui/main.gd`. |
 | R2 | Count label per mode. | Text key `count_final` in `FINAL_ONLY`. |
 | R3 | Pool-only mode. | `_practice_only()` returns true. |
+
+The tile view, safe area and maximum width arrived in `v0.3.0` (kit ADR 0007) and replaced White Tally's own board
+mechanics and `TallySafeArea`; see 10.8.
 
 ## 8. Attempt and record
 
@@ -736,7 +739,8 @@ Look-alike risk (ADR 0001): no candy, sweets, gems, fruit or jewel shapes; no sp
 screen shake, flashes, combo texts or score pop-ups; no lives, boosters or level maps. Tiles are pips on flat
 squares; a vanish is a quiet fade.
 
-All sizes, colours and timings in 10.1 and 10.2 are constants at the top of `ui/board_view.gd`, so they can be
+All sizes, colours and timings in 10.1 and 10.2 are constants at the top of `ui/board_view.gd` (tile colours, pips, joins, swap, slide and fall timing) and members of
+`WhiteTileView` (gap, radius, vanish and shake timing, swipe thresholds; kit defaults are the values below), so they can be
 tuned after the look-and-feel test without touching logic.
 
 ### 10.2 Animation
@@ -786,9 +790,11 @@ Also implemented: `_practice_only()` (true) and `_play_message(a)` (dead-end not
 animating; the view's `finished` signal refreshes the screen, so the notice appears when the tiles have stopped).
 `_key_move(event)` forwards to `TallyBoardView.key_move`.
 
-**Safe area.** `_make_view` schedules `TallySafeArea.apply` (`ui/safe_area.gd`) on the kit's margin container: the
-display safe area, as window-relative insets in viewport units, is added to the kit margins (notches, rounded
-corners; zero on a normal desktop window). Debug override `--safe=l,t,r,b` in viewport px.
+**Safe area and width.** `_use_safe_area()` returns true: the display safe area (`WhiteSafeArea`, window-relative
+insets in viewport units) is added to the kit margins (notches, rounded corners; zero on a normal desktop window).
+`_max_content_width()` returns 720: on a wide window the column stays 720 px wide and centred, so the board is as
+large as on a phone (finding of the test report: on wide screens the UI ran over the full width). Debug override
+`--safe=l,t,r,b` in viewport px.
 
 ### 10.4 Input
 
@@ -844,12 +850,25 @@ default texts.
 `White Tally #12 · 7/11/16 moves (par 6/10/15)` (Dutch `zetten`), unsolved levels as `-`, built by the kit
 (`WhiteFormat.day_line`). No moves, no time (confirmed by the owner), no board. Daily only. See ADR 0004.
 
+### 10.8 Board view on the kit (`TallyBoardView extends WhiteTileView`)
+
+Layout, tile registry, phase animation, shake and swipe/tap-tap/keyboard input are the kit's (`CELL_MOVES`). The game
+class keeps: tile colours and pips (`_draw_tile_body`, `_draw_tile_face`), join bars (`_draw_links`),
+`_resolve_cell_move(cell, dir)` = `board.canonical(shown(), cell * 4 + dir)`, and `to_steps` that converts the steps
+of `step_traced` to view steps: swap = move `[[a, b], [b, a]]` (120 ms, eased), slide = move (100 ms, eased), fall =
+move at 16 cells/s, vanish = vanish. Wrappers `show_attempt`, `update_attempt`, `play_move`, `show_state`, `state`
+keep the screen code unchanged. `sim/` and `data/` were not touched: the puzzles are byte-identical.
+
+Deviations from the look of `v0.2.0`: none on 720x1280 (screenshots `same`); the `desktop` shot (1280x720) differs
+by design because of the 720 px column. The clock in `--shot` mode is frozen by the kit (0.3.0); none of the seven
+scenarios shows a running clock.
+
 ## 11. Build and deployment
 
 - `.github/workflows/ci.yml` copied from the kit template (kit 7.4): checkout with submodules, kit pin check,
   `setup-godot` (4.7.2), import, kit tests, game tests with `--min-checks=<N>`, Web export (release,
-  single-threaded) as artifact, debug screenshots (artifact `shots`: three levels, selection, solved, phone safe
-  area, desktop size), Pages deploy on `develop`. The puzzles-left step only runs when
+  single-threaded) as artifact, debug screenshots from `tools/shots.txt` (artifact `shots`: three levels, selection, solved, phone safe
+  area, desktop size; kit `tools/shots.sh`), Pages deploy on `develop`. The puzzles-left step only runs when
   `data/daily.json` exists, so it is inactive in phase 1.
 - Export preset `exclude_filter="tests/*,tools/*,addons/white_kit/tests/*,addons/white_kit/tools/*"`.
 - On `develop` (not on pull requests) the Web build is published to GitHub Pages at
