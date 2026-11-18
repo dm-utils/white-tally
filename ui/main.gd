@@ -50,14 +50,15 @@ func _make_view() -> Control:
 	var v := TallyBoardView.new()
 	v.move_chosen.connect(_on_move)
 	v.finished.connect(_on_view_finished)
-	_apply_safe_area.call_deferred()
 	return v
 
 
-func _apply_safe_area() -> void:
-	for c in get_children():
-		if c is MarginContainer:
-			TallySafeArea.apply(c, str(_debug.get("safe", "")))
+func _use_safe_area() -> bool:
+	return true
+
+
+func _max_content_width() -> int:
+	return 720
 
 
 func _view_show(a: WhiteAttempt) -> void:

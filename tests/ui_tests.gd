@@ -328,11 +328,11 @@ func _texts() -> void:
 
 
 func _safe_area() -> void:
-	var i := TallySafeArea.from_rects(Rect2(0, 80, 1080, 2200), Vector2(1080, 2400), Vector2(720, 1280))
+	var i := WhiteSafeArea.from_rects(Rect2(0, 80, 1080, 2200), Vector2(1080, 2400), Vector2(720, 1280))
 	_check.call(is_equal_approx(i.top, 80.0 * 1280.0 / 2400.0), "safe area: top inset in viewport units")
 	_check.call(is_equal_approx(i.bottom, 120.0 * 1280.0 / 2400.0) and i.left == 0.0, "safe area: bottom inset, no side inset")
-	_check.call(TallySafeArea.from_rects(Rect2(), Vector2(540, 960), Vector2(720, 1280)).top == 0.0, "safe area: no rect gives zero insets")
-	_check.call(TallySafeArea.parse("40,20,30,10").right == 30.0 and TallySafeArea.parse("5").bottom == 0.0, "safe area: debug override")
+	_check.call(WhiteSafeArea.from_rects(Rect2(), Vector2(540, 960), Vector2(720, 1280)).top == 0.0, "safe area: no rect gives zero insets")
+	_check.call(WhiteSafeArea.parse("40,20,30,10").right == 30.0 and WhiteSafeArea.parse("5").bottom == 0.0, "safe area: debug override")
 
 
 func _screen() -> void:

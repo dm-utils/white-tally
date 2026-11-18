@@ -402,11 +402,11 @@ func _input_boundaries() -> void:
 
 
 func _safe_area_edges() -> void:
-	var i := TallySafeArea.from_rects(Rect2(-50, -10, 2000, 3000), Vector2(1080, 2400), Vector2(720, 1280))
+	var i := WhiteSafeArea.from_rects(Rect2(-50, -10, 2000, 3000), Vector2(1080, 2400), Vector2(720, 1280))
 	_check.call(i.left == 0.0 and i.top == 0.0 and i.right == 0.0 and i.bottom == 0.0, "safe area: a rect larger than the window gives zero")
-	var k := TallySafeArea.from_rects(Rect2(0, 0, 540, 960), Vector2(540, 960), Vector2(720, 1280))
+	var k := WhiteSafeArea.from_rects(Rect2(0, 0, 540, 960), Vector2(540, 960), Vector2(720, 1280))
 	_check.call(k.left == 0.0 and k.bottom == 0.0, "safe area: rect equal to the window gives zero")
-	_check.call(TallySafeArea.parse("").top == 0.0 and TallySafeArea.parse("a,b").left == 0.0, "safe area: junk override gives zero")
+	_check.call(WhiteSafeArea.parse("").top == 0.0 and WhiteSafeArea.parse("a,b").left == 0.0, "safe area: junk override gives zero")
 
 
 # --- screen flow -----------------------------------------------------------------------------------------------------
